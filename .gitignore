@@ -1,0 +1,7 @@
+venv
+
+# jupyter notebook checkpoints
+.ipynb_checkpoints
+# magnetosphere regions data
+magnetic_regions/parameter_data*
+magnetic_regions/slices
