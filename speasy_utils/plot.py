@@ -326,13 +326,14 @@ def spectro_plot(param_id, start, stop, xlabel=None, ylabel=None,
                  zlabel=None, yscale=None,
                  channels = None, ax=None, figsize=(10,2), 
                  vmin=None, vmax=None, lognorm=True, datefmt="%H:%M",
-                 cmap=None):
+                 cmap=None, parameter_data=None):
     if ax is None:
         fig, ax = plt.subplots(1,1,figsize=figsize)
     # get the data
-    param_data = spz.get_data(param_id, start, stop)
-    [n,m] = param_data.data.shape
-    X = param_data.data   
+    if parameter_data is None:
+        parameter_data = spz.get_data(param_id, start, stop)
+    [n,m] = parameter_data.data.shape
+    X = parameter_data.data   
     
     # channels (constant channels case)
     if channels is None:
@@ -341,7 +342,7 @@ def spectro_plot(param_id, start, stop, xlabel=None, ylabel=None,
         y = channels
     
     # grid
-    x1, y1 = np.meshgrid(param_data.time,y, indexing="ij")
+    x1, y1 = np.meshgrid(parameter_data.time,y, indexing="ij")
     
     # data bounds
     if vmin is None:
@@ -385,4 +386,72 @@ def spectro_plot(param_id, start, stop, xlabel=None, ylabel=None,
         ax.set_yscale(yscale)
     
     return ax
+
+def set_date_xticks(ax, datefmt="%H:%M"):
+    # get ticks
+    x_ticks_loc = ax.get_xticks()
+    # convert to datetime objects
+    x_ticks = [datetime.utcfromtimestamp(xi) for xi in x_ticks_loc]
+    # format the datetimes
+    x_labels = [d.strftime(datefmt) for d in x_ticks]
     
+    #ticks_loc = ax.get_xticks().tolist()
+    ax.xaxis.set_major_locator(mpl.ticker.FixedLocator(x_ticks_loc.tolist()))
+    # set labels
+    ax.set_xticklabels(x_labels)
+    return ax
+    
+
+def parameter_plot(parameter_id, start, stop, ax=None, subplot_height=3,
+        xlabel=None, ylabel=None, labels=None):
+    # multiple parameter ids were provided, ax will be ignored if not None
+    if isinstance(parameter_id, list):
+        n = len(parameter_id)
+        if n==1:
+            return parameter_plot(parameter_id[0], start, stop, ax=ax, xlabel=xlabel, ylabel=ylabel, labels=labels)
+        fig, ax = plt.subplots(n, 1, figsize=(10, n*subplot_height))
+        if labels is None:
+            labels = [None] * n
+        if ylabel is None:
+            ylabel = [None] * n
+        for i, pid in enumerate(parameter_id):
+            parameter_plot(pid, start, stop, ax=ax[i], labels=labels[i], ylabel=ylabel[i])
+            # remove x axis for all but the last
+            if i!=n-1:
+                ax[i].set_xticks([])
+
+        if xlabel:
+            ax[-1].set_xlabel(xlabel)
+        plt.subplots_adjust(wspace=0, hspace=0)
+        return ax
+
+
+
+
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=(10, 3))
+    # get data
+    p = spz.get_data(parameter_id, start, stop)
+    if p is None:
+        return ax
+
+    # if data number of components less than 3 it is timeseries
+    if len(p.data.shape)==1 or p.data.shape[1]<=3:
+        lines=ax.plot(p.time, p.data)
+        # multiple components
+        if p.data.shape[1]>1:
+            if labels:
+                ax.legend(lines, labels)
+    else:
+        spectro_plot(None, None, None, parameter_data = p, ax=ax)
+
+    set_date_xticks(ax)
+    if xlabel:
+        ax.set_xlabel(xlabel)
+    if ylabel:
+        ax.set_ylabel(ylabel)
+    ax.set_xlim(p.time[0], p.time[-1])
+    return ax
+
+
+        
