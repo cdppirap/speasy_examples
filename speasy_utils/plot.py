@@ -2,8 +2,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from matplotlib.gridspec import GridSpec
+import matplotlib.dates as mdates
+from datetime import datetime, timedelta
+
 
 from sklearn.metrics import ConfusionMatrixDisplay
+
+import matplotlib as mpl
+from speasy_utils.coord import mp_shue1997, bs_Jerab2005
+
+import speasy as spz
 
 def plot_features(x,figsize=(10, 10), title="Features", bins=200, xlabel="x_1", ylabel="x_2"):
     fig = plt.figure(constrained_layout=True, figsize=figsize)
@@ -103,8 +111,7 @@ def plot_train_test_label_densities(x_train, x_test, y_train, y_test, figsize=(1
     
     return fig
 
-import matplotlib as mpl
-from coord_utils import mp_shue1997, bs_Jerab2005
+
 def plot_magnetosphere(ax):
     earth_circle = plt.Circle((0,0),1, color="black")
     ax.add_patch(earth_circle)
@@ -199,9 +206,6 @@ def plot_classification_results(xyz, y, y_pred, xmin,xmax, ymin,ymax, labels=Non
     
     return fig
     
-import matplotlib.dates as mdates
-from datetime import datetime, timedelta
-
 def timestamp(dt):
     return (dt - datetime(1970, 1,1)).total_seconds()
 
@@ -318,10 +322,11 @@ def plot_scores(scores, metrics):
         ax.set_xlim(0,1)
     return fig
 
-def spectro_plot(param_id, start, stop, ylabel=None, channels = None, ax=None, figsize=(10,2), 
-                 vmin=None, vmax=None, lognorm=True):
-    """Plot 'spectral data'.
-    """
+def spectro_plot(param_id, start, stop, xlabel=None, ylabel=None, 
+                 zlabel=None, yscale=None,
+                 channels = None, ax=None, figsize=(10,2), 
+                 vmin=None, vmax=None, lognorm=True, datefmt="%H:%M",
+                 cmap=None):
     if ax is None:
         fig, ax = plt.subplots(1,1,figsize=figsize)
     # get the data
@@ -345,32 +350,39 @@ def spectro_plot(param_id, start, stop, ylabel=None, channels = None, ax=None, f
         vmax = np.nanmax(X)
     
     # colormap
-    cmap = matplotlib.cm.rainbow.copy()
-    cmap.set_bad('White',0.)
+    if not cmap:
+        cmap = mpl.cm.rainbow.copy()
+        cmap.set_bad('White',0.)
     
     # normalize colormapping
     if lognorm and vmin>0.:
-        norm=colors.LogNorm(vmin=vmin, vmax=vmax)
+        norm=mpl.colors.LogNorm(vmin=vmin, vmax=vmax)
     else:
         norm=None
     
     
     c = ax.pcolormesh(x1, y1, X, cmap=cmap, norm=norm, edgecolors="face")
-    plt.colorbar(c,ax=ax, norm=norm)
+    cbar = plt.colorbar(c,ax=ax, norm=norm)
+    if zlabel:
+        cbar.set_label(zlabel)
     
-    ax.set_xlabel("Time")
+    if xlabel:
+        ax.set_xlabel(xlabel)
     x_ticks = ax.get_xticks()
     x_ticks = [datetime.utcfromtimestamp(xi) for xi in x_ticks]
-    x_labels = [d.strftime("%H:%M") for d in x_ticks]
+    x_labels = [d.strftime(datefmt) for d in x_ticks]
     
     ticks_loc = ax.get_xticks().tolist()
-    ax.xaxis.set_major_locator(mticker.FixedLocator(ticks_loc))
+    ax.xaxis.set_major_locator(mpl.ticker.FixedLocator(ticks_loc))
     ax.set_xticklabels(x_labels)
     
     if ylabel:
         ax.set_ylabel(ylabel)
     
     ax.set_ylim(y.min(), y.max())
+    
+    if yscale:
+        ax.set_yscale(yscale)
     
     return ax
     

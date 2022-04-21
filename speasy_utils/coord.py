@@ -1,7 +1,7 @@
 from scipy import constants as cst
 import numpy as np
 
-from utils import printProgressBar
+from speasy_utils import printProgressBar
 
 def cartesian_to_spherical(x, y, z):
     r = np.sqrt(x ** 2 + y ** 2 + z ** 2)
